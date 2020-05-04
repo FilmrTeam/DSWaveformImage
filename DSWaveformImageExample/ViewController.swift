@@ -10,9 +10,7 @@ import UIKit
 import DSWaveformImage
 
 class ViewController: UIViewController {
-    @IBOutlet weak var topWaveformView: UIImageView!
-    @IBOutlet weak var middleWaveformView: WaveformImageView!
-    @IBOutlet weak var bottomWaveformView: UIImageView!
+    @IBOutlet weak var middleWaveformView: UIImageView!
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -22,34 +20,20 @@ class ViewController: UIViewController {
 
         // always uses background thread rendering
         waveformImageDrawer.waveformImage(fromAudioAt: audioURL,
-                                          size: topWaveformView.bounds.size,
+                                          size: middleWaveformView.bounds.size,
                                           style: .striped,
-                                          position: .top) { image in
+                                          position: .middle) { image in
+
             // need to jump back to main queue
             DispatchQueue.main.async {
-                self.topWaveformView.image = image
+                let template = image?.withRenderingMode(.alwaysTemplate)
+                self.middleWaveformView.tintColor = .systemPurple
+                self.middleWaveformView.image = template
             }
         }
 
-        middleWaveformView.waveformColor = UIColor.red
-        middleWaveformView.waveformAudioURL = audioURL
 
-        let configuration = WaveformConfiguration(size: bottomWaveformView.bounds.size,
-                                                  color: UIColor.blue,
-                                                  style: .filled,
-                                                  position: .bottom)
 
-        waveformImageDrawer.waveformImage(fromAudioAt: audioURL, with: configuration) { image in
-            DispatchQueue.main.async {
-                self.bottomWaveformView.image = image
-            }
-        }
-
-        // get access to the raw, normalized amplitude samples
-        let waveformAnalyzer = WaveformAnalyzer(audioAssetURL: audioURL)
-        waveformAnalyzer?.samples(count: 10) { samples in
-            print("sampled down to 10, results are \(samples ?? [])")
-        }
     }
 }
 

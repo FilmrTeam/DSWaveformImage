@@ -67,13 +67,20 @@ private extension WaveformImageDrawer {
     }
 
     private func graphImage(from samples: [Float], with configuration: WaveformConfiguration) -> UIImage? {
+
+        let sampleLineWidth = 1 * configuration.scale
+        let sampleSpacing = 3 * configuration.scale
+
+        let samplesFittingInSize = configuration.size.width / (sampleLineWidth + sampleSpacing)
+        let sampleStep = (CGFloat(samples.count) / samplesFittingInSize).rounded(.towardZero)
+
         UIGraphicsBeginImageContextWithOptions(configuration.size, false, configuration.scale)
         let context = UIGraphicsGetCurrentContext()!
         context.setAllowsAntialiasing(true)
         context.setShouldAntialias(true)
 
         drawBackground(on: context, with: configuration)
-        drawGraph(from: samples, on: context, with: configuration)
+        drawGraph(from: samples, step: Int(sampleStep), on: context, with: configuration)
 
         let graphImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
@@ -87,9 +94,15 @@ private extension WaveformImageDrawer {
     }
 
     private func drawGraph(from samples: [Float],
+                           step: Int,
                            on context: CGContext,
                            with configuration: WaveformConfiguration) {
+
+        let sampleLineWidth: CGFloat = 1 * configuration.scale
+        let sampleSpacing: CGFloat = 3 * configuration.scale
+
         let graphRect = CGRect(origin: CGPoint.zero, size: configuration.size)
+
         let positionAdjustedGraphCenter = CGFloat(configuration.position.value()) * graphRect.size.height
         let verticalPaddingDivisor = configuration.paddingFactor ?? CGFloat(configuration.position.value() == 0.5 ? 2.5 : 1.5)
         let drawMappingFactor = graphRect.size.height / verticalPaddingDivisor
@@ -97,20 +110,25 @@ private extension WaveformImageDrawer {
 
         let path = CGMutablePath()
         var maxAmplitude: CGFloat = 0.0 // we know 1 is our max in normalized data, but we keep it 'generic'
-        context.setLineWidth(1.0 / configuration.scale)
-        for (x, sample) in samples.enumerated() {
-            let xPos = CGFloat(x) / configuration.scale
+
+        context.setLineWidth(sampleLineWidth * configuration.scale)
+        context.setLineCap(.round)
+
+        var currentX: CGFloat = sampleLineWidth / 2
+
+        for (x, sample) in samples.enumerated() where x % step == 0 {
             let invertedDbSample = 1 - CGFloat(sample) // sample is in dB, linearly normalized to [0, 1] (1 -> -50 dB)
             let drawingAmplitude = max(minimumGraphAmplitude, invertedDbSample * drawMappingFactor)
             let drawingAmplitudeUp = positionAdjustedGraphCenter - drawingAmplitude
             let drawingAmplitudeDown = positionAdjustedGraphCenter + drawingAmplitude
             maxAmplitude = max(drawingAmplitude, maxAmplitude)
 
-            if configuration.style == .striped && (Int(xPos) % 5 != 0) { continue }
+            path.move(to: CGPoint(x: currentX, y: drawingAmplitudeUp))
+            path.addLine(to: CGPoint(x: currentX, y: drawingAmplitudeDown))
 
-            path.move(to: CGPoint(x: xPos, y: drawingAmplitudeUp))
-            path.addLine(to: CGPoint(x: xPos, y: drawingAmplitudeDown))
+            currentX += sampleLineWidth + sampleSpacing
         }
+
         context.addPath(path)
 
         switch configuration.style {
