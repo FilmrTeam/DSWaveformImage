@@ -56,7 +56,11 @@ private extension WaveformImageDrawer {
                 with configuration: WaveformConfiguration,
                 qos: DispatchQoS.QoSClass,
                 completionHandler: @escaping (_ waveformImage: UIImage?) -> ()) {
-        let sampleCount = Int(configuration.size.width * configuration.scale)
+
+        let sampleLineWidth = configuration.scale
+        let sampleSpacing = 3 * configuration.scale
+
+        let sampleCount = Int(configuration.size.width / (sampleLineWidth + sampleSpacing))
         waveformAnalyzer.samples(count: sampleCount, qos: qos) { samples in
             guard let samples = samples else {
                 completionHandler(nil)
@@ -67,20 +71,13 @@ private extension WaveformImageDrawer {
     }
 
     private func graphImage(from samples: [Float], with configuration: WaveformConfiguration) -> UIImage? {
-
-        let sampleLineWidth = 1 * configuration.scale
-        let sampleSpacing = 3 * configuration.scale
-
-        let samplesFittingInSize = configuration.size.width / (sampleLineWidth + sampleSpacing)
-        let sampleStep = (CGFloat(samples.count) / samplesFittingInSize).rounded(.towardZero)
-
         UIGraphicsBeginImageContextWithOptions(configuration.size, false, configuration.scale)
         let context = UIGraphicsGetCurrentContext()!
         context.setAllowsAntialiasing(true)
         context.setShouldAntialias(true)
 
         drawBackground(on: context, with: configuration)
-        drawGraph(from: samples, step: Int(sampleStep), on: context, with: configuration)
+        drawGraph(from: samples, on: context, with: configuration)
 
         let graphImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
@@ -94,7 +91,6 @@ private extension WaveformImageDrawer {
     }
 
     private func drawGraph(from samples: [Float],
-                           step: Int,
                            on context: CGContext,
                            with configuration: WaveformConfiguration) {
 
@@ -116,7 +112,7 @@ private extension WaveformImageDrawer {
 
         var currentX: CGFloat = sampleLineWidth / 2
 
-        for (x, sample) in samples.enumerated() where x % step == 0 {
+        for sample in samples {
             let invertedDbSample = 1 - CGFloat(sample) // sample is in dB, linearly normalized to [0, 1] (1 -> -50 dB)
             let drawingAmplitude = max(minimumGraphAmplitude, invertedDbSample * drawMappingFactor)
             let drawingAmplitudeUp = positionAdjustedGraphCenter - drawingAmplitude
