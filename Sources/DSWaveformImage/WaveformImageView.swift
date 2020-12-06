@@ -18,7 +18,6 @@ public class WaveformImageView: UIImageView {
         didSet { updateWaveform() }
     }
 
-    @objc
     public var waveformAudioURL: URL? {
         didSet { updateWaveform() }
     }
