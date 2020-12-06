@@ -1,5 +1,5 @@
 import AVFoundation
-
+import UIKit.UIColor
 /**
  Position of the drawn waveform:
  - **top**: Draws the waveform at the top of the image, such that only the bottom 50% are visible.
